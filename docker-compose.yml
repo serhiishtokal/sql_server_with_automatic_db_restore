@@ -1,0 +1,44 @@
+services:
+  sqlserver:
+    container_name: ${SQL_CONTAINER_NAME}
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: ${MSSQL_PID}
+      MSSQL_BACKUP_DIR: ${MSSQL_BACKUP_DIR}
+    ports:
+      - "${SQL_PORT}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - "${LOCAL_BACKUP_DIR}:${MSSQL_BACKUP_DIR}"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep sqlservr || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+
+
+  db_restore:
+    image: mcr.microsoft.com/mssql-tools:latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    entrypoint: >
+      bash -c "
+        echo 'Restoring database [${DATABASE_NAME}] from backup file [${BACKUP_FILE}]...';
+        set -x;
+        /opt/mssql-tools/bin/sqlcmd -S ${SQL_CONTAINER_NAME} -U sa -P ${MSSQL_SA_PASSWORD} -d master -Q \"RESTORE DATABASE [${DATABASE_NAME}] FROM DISK = '${MSSQL_BACKUP_DIR}/${BACKUP_FILE}' WITH MOVE 'MR_UMBRACO_R7' TO '/var/opt/mssql/data/${DATABASE_NAME}.mdf', MOVE 'MR_UMBRACO_R7_log' TO '/var/opt/mssql/data/${DATABASE_NAME}.ldf', REPLACE\";
+        exitcode=\"$$?\"; 
+        set +x;
+        if [ \"$$exitcode\" -eq 0 ]; then
+          echo 'Restore complete';
+        else
+          echo 'Restore failed with exit code ' \"$$exitcode\";
+          exit \"$$exitcode\";
+        fi"
+
+    restart: "no"
+
+volumes:
+  sqlserver_data:
