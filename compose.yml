@@ -6,12 +6,11 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: ${MSSQL_PID}
-      MSSQL_BACKUP_DIR: ${MSSQL_BACKUP_DIR}
     ports:
       - "${SQL_PORT}:1433"
     volumes:
       - sqlserver_data2:/var/opt/mssql
-      - "${LOCAL_BACKUP_DIR}:${MSSQL_BACKUP_DIR}"
+      - "${LOCAL_BACKUP_DIR}:/var/opt/mssql/backup"
     healthcheck:
       test: ["CMD-SHELL", "pgrep sqlservr || exit 1"]
       interval: 10s
@@ -27,7 +26,7 @@ services:
       bash -c "
         echo 'Restoring database [${DATABASE_NAME}] from backup file [${BACKUP_FILE}]...';
         set -x;
-        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P ${MSSQL_SA_PASSWORD} -d master -Q \"RESTORE DATABASE [${DATABASE_NAME}] FROM DISK = '${MSSQL_BACKUP_DIR}/${BACKUP_FILE}' WITH MOVE 'MR_UMBRACO_R7' TO '/var/opt/mssql/data/${DATABASE_NAME}.mdf', MOVE 'MR_UMBRACO_R7_log' TO '/var/opt/mssql/data/${DATABASE_NAME}.ldf', REPLACE\";
+        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P ${MSSQL_SA_PASSWORD} -d master -Q \"RESTORE DATABASE [${DATABASE_NAME}] FROM DISK = '/var/opt/mssql/backup/${BACKUP_FILE}' WITH MOVE 'MR_UMBRACO_R7' TO '/var/opt/mssql/data/${DATABASE_NAME}.mdf', MOVE 'MR_UMBRACO_R7_log' TO '/var/opt/mssql/data/${DATABASE_NAME}.ldf', REPLACE\";
         exitcode=\"$$?\"; 
         set +x;
         if [ \"$$exitcode\" -eq 0 ]; then
