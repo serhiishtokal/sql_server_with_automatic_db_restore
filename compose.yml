@@ -9,7 +9,7 @@ services:
     ports:
       - "${SQL_PORT}:1433"
     volumes:
-      - sqlserver_data2:/var/opt/mssql
+      - sqlserver_data:/var/opt/mssql
       - "${LOCAL_BACKUP_DIR}:/var/opt/mssql/backup"
     healthcheck:
       test: ["CMD-SHELL", "pgrep sqlservr || exit 1"]
