@@ -22,20 +22,14 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
-    entrypoint: >
-      bash -c "
-        echo 'Restoring database [${DATABASE_NAME}] from backup file [${BACKUP_FILE}]...';
-        set -x;
-        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P ${MSSQL_SA_PASSWORD} -d master -Q \"RESTORE DATABASE [${DATABASE_NAME}] FROM DISK = '/var/opt/mssql/backup/${BACKUP_FILE}' WITH MOVE 'MR_UMBRACO_R7' TO '/var/opt/mssql/data/${DATABASE_NAME}.mdf', MOVE 'MR_UMBRACO_R7_log' TO '/var/opt/mssql/data/${DATABASE_NAME}.ldf', REPLACE\";
-        exitcode=\"$$?\"; 
-        set +x;
-        if [ \"$$exitcode\" -eq 0 ]; then
-          echo 'Restore complete';
-        else
-          echo 'Restore failed with exit code ' \"$$exitcode\";
-          exit \"$$exitcode\";
-        fi"
-
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      BACKUP_FILE: ${BACKUP_FILE}
+    volumes:
+      - ./restore-database.sh:/restore-database.sh:ro
+      - "${LOCAL_BACKUP_DIR}:/var/opt/mssql/backup"
+    entrypoint: ["bash", "/restore-database.sh"]
     restart: "no"
 
 volumes:
