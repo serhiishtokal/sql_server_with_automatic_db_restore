@@ -2,6 +2,8 @@ name: sql_server_e2e_tests
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    networks:
+      - sqlserver_internal
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
@@ -12,13 +14,16 @@ services:
       - sqlserver_data:/var/opt/mssql
       - "${LOCAL_BACKUP_DIR}:/var/opt/mssql/backup"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep sqlservr || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $${MSSQL_SA_PASSWORD} -Q 'SELECT 1' -C -b || exit 1"]
       interval: 10s
       retries: 10
       start_period: 30s
+      timeout: 5s
 
   db_restore:
     image: mcr.microsoft.com/mssql-tools:latest
+    networks:
+      - sqlserver_internal
     depends_on:
       sqlserver:
         condition: service_healthy
@@ -34,3 +39,8 @@ services:
 
 volumes:
   sqlserver_data:
+
+networks:
+  sqlserver_internal:
+    driver: bridge
+    internal: false
